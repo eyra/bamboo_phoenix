@@ -2,11 +2,17 @@
 
 **Bamboo & Bamboo.Phoenix are part of the [thoughtbot Elixir family][elixir-phoenix] of projects.**
 
-`Bamboo.Phoenix` is a library to use Phoenix's View rendering layer for your
-[Bamboo] emails. After installation, see the [Bamboo.Phoenix docs] for more information.
+`Bamboo.Phoenix` is a library to render [Bamboo] emails using Phoenix templates. This package
+supports Phoenix 1.8+ which uses function-based templates instead of Phoenix.View.
 
 [Bamboo]: https://github.com/thoughtbot/bamboo
 [Bamboo.Phoenix docs]: https://hexdocs.pm/bamboo_phoenix/Bamboo.Phoenix.html
+
+## Requirements
+
+- Phoenix >= 1.8.0
+- Bamboo >= 2.5.0
+- Elixir >= 1.16
 
 ## Installation
 
@@ -16,10 +22,211 @@ your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:bamboo_phoenix, "~> 1.0.0"}
+    {:bamboo_phoenix, "~> 2.0.0"}
   ]
 end
 ```
+
+## Usage
+
+### Basic Setup
+
+Define your email module with template functions:
+
+```elixir
+# lib/my_app_web/emails/user_email.ex
+defmodule MyApp.UserEmail do
+  use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+  
+  def welcome_email(user) do
+    new_email()
+    |> from("noreply@example.com")
+    |> to(user.email)
+    |> subject("Welcome!")
+    |> assign(:user, user)
+    |> render(:welcome)
+  end
+end
+```
+
+### Template Modules
+
+With Phoenix 1.8+, templates are defined as functions in modules:
+
+```elixir
+# lib/my_app_web/email_html.ex
+defmodule MyAppWeb.EmailHTML do
+  # Define both HTML and text versions of your templates
+  def welcome("html", assigns) do
+    """
+    <div style="font-family: sans-serif;">
+      <h1>Welcome #{assigns.user.name}!</h1>
+      <p>Thanks for joining our platform.</p>
+      <a href="#{assigns.confirmation_url}" style="background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+        Confirm your account
+      </a>
+    </div>
+    """
+  end
+  
+  def welcome("text", assigns) do
+    """
+    Welcome #{assigns.user.name}!
+    
+    Thanks for joining our platform.
+    
+    Confirm your account:
+    #{assigns.confirmation_url}
+    """
+  end
+  
+  # You can have multiple email templates in the same module
+  def password_reset("html", assigns) do
+    """
+    <div>
+      <h2>Reset your password</h2>
+      <p>Click the link below to reset your password:</p>
+      <a href="#{assigns.reset_url}">Reset Password</a>
+    </div>
+    """
+  end
+  
+  def password_reset("text", assigns) do
+    """
+    Reset your password
+    
+    Click the link below to reset your password:
+    #{assigns.reset_url}
+    """
+  end
+end
+```
+
+### Using Layouts
+
+Layouts wrap your email content with consistent headers/footers:
+
+```elixir
+# lib/my_app_web/layout_html.ex
+defmodule MyAppWeb.LayoutHTML do
+  def email("html", assigns) do
+    """
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+          }
+          .header { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            text-align: center;
+          }
+          .footer { 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #dee2e6;
+            text-align: center;
+            font-size: 12px;
+            color: #6c757d;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>My App</h1>
+          </div>
+          <div class="content">
+            #{assigns.inner_content}
+          </div>
+          <div class="footer">
+            <p>&copy; 2024 My Company. All rights reserved.</p>
+            <p>
+              <a href="https://example.com/unsubscribe">Unsubscribe</a> |
+              <a href="https://example.com/preferences">Email Preferences</a>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+  end
+  
+  def email("text", assigns) do
+    """
+    MY APP
+    ======
+    
+    #{assigns.inner_content}
+    
+    ---
+    © 2024 My Company. All rights reserved.
+    
+    Unsubscribe: https://example.com/unsubscribe
+    Email Preferences: https://example.com/preferences
+    """
+  end
+end
+```
+
+### Applying Layouts to Emails
+
+```elixir
+defmodule MyApp.UserEmail do
+  use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+  
+  def welcome_email(user) do
+    base_email()
+    |> to(user.email)
+    |> subject("Welcome to My App!")
+    |> assign(:user, user)
+    |> assign(:confirmation_url, "https://example.com/confirm/#{user.confirmation_token}")
+    |> render(:welcome)
+  end
+  
+  defp base_email do
+    new_email()
+    |> from("support@example.com")
+    |> put_layout({MyAppWeb.LayoutHTML, :email})  # Apply layout to all emails
+  end
+end
+```
+
+### Rendering Specific Formats
+
+You can render only HTML or only text emails by using string templates:
+
+```elixir
+def html_only_email(user) do
+  new_email()
+  |> render("welcome.html")  # Only renders HTML version
+end
+
+def text_only_email(user) do
+  new_email()
+  |> render("welcome.text")  # Only renders text version
+end
+```
+
+## Migration from Phoenix.View
+
+If you're migrating from an older version that used Phoenix.View:
+
+1. **Replace View modules with HTML modules** - Instead of `use Phoenix.View`, create plain modules with template functions
+2. **Convert .eex templates to functions** - Each template becomes a function that takes format and assigns
+3. **Update layout references** - Change from `LayoutView` to `LayoutHTML` (or your naming convention)
+4. **The Bamboo.Phoenix API stays the same** - No changes needed to your email sending code
 
 ## Contributing
 
