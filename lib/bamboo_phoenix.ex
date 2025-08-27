@@ -19,20 +19,20 @@ defmodule Bamboo.Phoenix do
 
       defmodule MyAppWeb.EmailHTML do
         def welcome("html", assigns) do
-          """
+          \"\"\"
           <div>
             <h1>Welcome \#{assigns.user.name}!</h1>
             <p>Thanks for signing up.</p>
           </div>
-          """
+          \"\"\"
         end
 
         def welcome("text", assigns) do
-          """
+          \"\"\"
           Welcome \#{assigns.user.name}!
           
           Thanks for signing up.
-          """
+          \"\"\"
         end
       end
 
@@ -128,7 +128,7 @@ defmodule Bamboo.Phoenix do
 
         defp base_email do
           new_email
-          |> from("Rob Ot<robot@example.com>")
+          |> from("Rob Ot <robot@example.com>")
           |> put_header("Reply-To", "support@example.com")
           # This will use the email/2 functions for layouts
           |> put_html_layout({MyAppWeb.LayoutHTML, :email})
@@ -138,7 +138,7 @@ defmodule Bamboo.Phoenix do
       # my_app_web/email_html.ex
       defmodule MyAppWeb.EmailHTML do
         def sign_in("html", assigns) do
-          """
+          \"\"\"
           <div>
             <h2>Sign In Request</h2>
             <p>Hi \#{assigns.person.name},</p>
@@ -146,25 +146,25 @@ defmodule Bamboo.Phoenix do
               <a href="\#{assigns.sign_in_url}">Click here to sign in</a>
             </p>
           </div>
-          """
+          \"\"\"
         end
 
         def sign_in("text", assigns) do
-          """
+          \"\"\"
           Sign In Request
           
           Hi \#{assigns.person.name},
           
           Click here to sign in:
           \#{assigns.sign_in_url}
-          """
+          \"\"\"
         end
       end
 
       # my_app_web/layout_html.ex
       defmodule MyAppWeb.LayoutHTML do
         def email("html", assigns) do
-          """
+          \"\"\"
           <!DOCTYPE html>
           <html>
             <head>
@@ -180,16 +180,16 @@ defmodule Bamboo.Phoenix do
               </footer>
             </body>
           </html>
-          """
+          \"\"\"
         end
 
         def email("text", assigns) do
-          """
+          \"\"\"
           \#{assigns.inner_content}
           
           ---
           © 2024 My Company
-          """
+          \"\"\"
         end
       end
   """
