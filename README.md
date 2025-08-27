@@ -51,11 +51,12 @@ end
 
 ### Template Modules
 
-With Phoenix 1.8+, templates are defined as functions in modules. These functions can return either:
+With Phoenix 1.8+, templates are defined as functions in modules. These functions can return:
 - Plain strings: `"<div>content</div>"`
-- Phoenix.HTML safe tuples: `{:safe, iodata}` (from `embed_templates` or `~H` sigil)
+- Phoenix.HTML safe tuples: `{:safe, iodata}` (from `embed_templates`)
+- Phoenix.LiveView.Rendered structs (from Phoenix.Component's `~H` sigil)
 
-Both return types are handled automatically by bamboo_phoenix. Note that `phoenix_html` is now a required dependency to ensure proper handling of safe tuples in all contexts.
+All return types are handled automatically by bamboo_phoenix. Note that `phoenix_html` is now a required dependency to ensure proper handling of safe tuples in all contexts.
 
 ```elixir
 # lib/my_app_web/email_html.ex

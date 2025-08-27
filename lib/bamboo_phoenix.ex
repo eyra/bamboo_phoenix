@@ -13,6 +13,14 @@ defmodule Bamboo.Phoenix do
   separate .eex files. Each template function takes a format ("html" or "text")
   as the first argument and assigns as the second.
 
+  Templates can return:
+  - Plain strings
+  - Phoenix.HTML safe tuples `{:safe, iodata}` from `embed_templates`
+  - Phoenix.LiveView.Rendered structs from Phoenix.Component's `~H` sigil
+
+  Layouts can use either string interpolation `\#{@inner_content}` or 
+  EEx tags `<%= @inner_content %>` - both work correctly without double-escaping.
+
   ## Examples
 
   _Define email templates as functions:_
@@ -22,6 +30,29 @@ defmodule Bamboo.Phoenix do
           \"\"\"
           <div>
             <h1>Welcome \#{assigns.user.name}!</h1>
+            <p>Thanks for signing up.</p>
+          </div>
+          \"\"\"
+        end
+
+        def welcome("text", assigns) do
+          \"\"\"
+          Welcome \#{assigns.user.name}!
+          
+          Thanks for signing up.
+          \"\"\"
+        end
+      end
+
+  _Or using Phoenix.Component with ~H sigil (requires phoenix_live_view):_
+
+      defmodule MyAppWeb.EmailHTML do
+        use Phoenix.Component
+
+        def welcome("html", assigns) do
+          ~H\"\"\"
+          <div>
+            <h1>Welcome <%= @user.name %>!</h1>
             <p>Thanks for signing up.</p>
           </div>
           \"\"\"
@@ -189,6 +220,22 @@ defmodule Bamboo.Phoenix do
           
           ---
           © 2024 My Company
+          \"\"\"
+        end
+      end
+
+      # Layouts can also use Phoenix.Component ~H sigil or EEx tags:
+      defmodule MyAppWeb.LayoutHTML do
+        use Phoenix.Component
+
+        def email("html", assigns) do
+          ~H\"\"\"
+          <!DOCTYPE html>
+          <html>
+            <body>
+              <%= @inner_content %>
+            </body>
+          </html>
           \"\"\"
         end
       end
@@ -393,9 +440,10 @@ defmodule Bamboo.Phoenix do
       false -> 
         content
       {layout_module, layout_template} ->
-        # Content is already normalized to a string. For layouts using string interpolation,
-        # we pass it directly. For layouts using EEx <%= %>, Phoenix.HTML.Safe handles it.
-        layout_assigns = Map.put(assigns, :inner_content, content)
+        # Wrap content in SafeString so it works with both string interpolation
+        # and EEx templates without double-escaping
+        safe_content = Bamboo.Phoenix.SafeString.new(content)
+        layout_assigns = Map.put(assigns, :inner_content, safe_content)
         layout_fn = if is_atom(layout_template), do: layout_template, else: String.to_atom(layout_template)
         result = apply(layout_module, layout_fn, ["html", layout_assigns])
         normalize_template_result(result)
@@ -445,13 +493,21 @@ defmodule Bamboo.Phoenix do
     binary
   end
 
+  # Handle Phoenix.LiveView.Rendered structs from ~H sigil
+  defp normalize_template_result(%Phoenix.LiveView.Rendered{} = rendered) do
+    rendered
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
+
   defp normalize_template_result(other) do
     raise ArgumentError, """
-    Expected template to return a string or {:safe, iodata} tuple, got: #{inspect(other)}
+    Expected template to return a string, {:safe, iodata} tuple, or Phoenix.LiveView.Rendered struct, got: #{inspect(other)}
     
     Templates should return either:
     - A plain string: "<div>content</div>"
     - A Phoenix.HTML safe tuple: {:safe, ["<div>", "content", "</div>"]}
+    - A Phoenix.LiveView.Rendered struct from ~H sigil
     """
   end
 
@@ -462,6 +518,11 @@ defmodule Bamboo.Phoenix do
 
   defp flatten_safe_iodata({:safe, inner}) do
     flatten_safe_iodata(inner)
+  end
+
+  # Handle SafeString structs in iodata - convert to their content
+  defp flatten_safe_iodata(%Bamboo.Phoenix.SafeString{content: content}) do
+    content
   end
 
   defp flatten_safe_iodata(binary) when is_binary(binary) do

@@ -21,6 +21,9 @@ complete changelog, see the git history for each version via the version links.
 ### Fixed
 * Properly handle Phoenix.HTML safe tuples from `embed_templates` and Phoenix.Component `~H` sigil
 * Both plain strings and safe tuples are now correctly normalized when rendering with layouts
+* Support for Phoenix.LiveView.Rendered structs from ~H sigil
+* Fixed double-escaping issues with layouts using `<%= @inner_content %>`
+* Layouts can now use either string interpolation `#{@inner_content}` or EEx `<%= @inner_content %>` without issues
 
 ### Migration Guide
 * Change `use Bamboo.Phoenix, view:` to `use Bamboo.Phoenix, template:`

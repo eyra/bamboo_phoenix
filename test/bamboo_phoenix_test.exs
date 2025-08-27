@@ -346,13 +346,13 @@ defmodule Bamboo.PhoenixTest do
     end
 
     test "raises on invalid return type from HTML template" do
-      assert_raise ArgumentError, ~r/Expected template to return a string or {:safe, iodata} tuple/, fn ->
+      assert_raise ArgumentError, ~r/Expected template to return a string/, fn ->
         EdgeCaseEmail.invalid_html_email()
       end
     end
 
     test "raises on invalid return type from text template" do
-      assert_raise ArgumentError, ~r/Expected template to return a string or {:safe, iodata} tuple/, fn ->
+      assert_raise ArgumentError, ~r/Expected template to return a string/, fn ->
         EdgeCaseEmail.invalid_text_email()
       end
     end

@@ -40,6 +40,7 @@ defmodule BambooPhoenix.MixProject do
       {:bamboo, ">= 2.5.0"},
       {:phoenix, ">= 1.8.0"},
       {:phoenix_html, ">= 3.3.4"},
+      {:phoenix_live_view, "~> 1.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
