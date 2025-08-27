@@ -393,6 +393,8 @@ defmodule Bamboo.Phoenix do
       false -> 
         content
       {layout_module, layout_template} ->
+        # Content is already normalized to a string. For layouts using string interpolation,
+        # we pass it directly. For layouts using EEx <%= %>, Phoenix.HTML.Safe handles it.
         layout_assigns = Map.put(assigns, :inner_content, content)
         layout_fn = if is_atom(layout_template), do: layout_template, else: String.to_atom(layout_template)
         result = apply(layout_module, layout_fn, ["html", layout_assigns])
@@ -424,6 +426,7 @@ defmodule Bamboo.Phoenix do
       false -> 
         content
       {layout_module, layout_template} ->
+        # For text templates, content doesn't need to be marked as safe
         layout_assigns = Map.put(assigns, :inner_content, content)
         layout_fn = if is_atom(layout_template), do: layout_template, else: String.to_atom(layout_template)
         result = apply(layout_module, layout_fn, ["text", layout_assigns])
@@ -431,9 +434,11 @@ defmodule Bamboo.Phoenix do
     end
   end
 
-  # Convert Phoenix.HTML safe tuples to strings, pass through regular strings
+  # Convert Phoenix.HTML safe tuples to strings, handling nested safe tuples
   defp normalize_template_result({:safe, iodata}) do
-    IO.iodata_to_binary(iodata)
+    iodata
+    |> flatten_safe_iodata()
+    |> IO.iodata_to_binary()
   end
 
   defp normalize_template_result(binary) when is_binary(binary) do
@@ -448,5 +453,22 @@ defmodule Bamboo.Phoenix do
     - A plain string: "<div>content</div>"
     - A Phoenix.HTML safe tuple: {:safe, ["<div>", "content", "</div>"]}
     """
+  end
+
+  # Flatten nested safe tuples in iodata
+  defp flatten_safe_iodata(data) when is_list(data) do
+    Enum.map(data, &flatten_safe_iodata/1)
+  end
+
+  defp flatten_safe_iodata({:safe, inner}) do
+    flatten_safe_iodata(inner)
+  end
+
+  defp flatten_safe_iodata(binary) when is_binary(binary) do
+    binary
+  end
+
+  defp flatten_safe_iodata(other) do
+    other
   end
 end

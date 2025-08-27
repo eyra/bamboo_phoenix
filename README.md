@@ -55,7 +55,7 @@ With Phoenix 1.8+, templates are defined as functions in modules. These function
 - Plain strings: `"<div>content</div>"`
 - Phoenix.HTML safe tuples: `{:safe, iodata}` (from `embed_templates` or `~H` sigil)
 
-Both return types are handled automatically by bamboo_phoenix.
+Both return types are handled automatically by bamboo_phoenix. Note that `phoenix_html` is now a required dependency to ensure proper handling of safe tuples in all contexts.
 
 ```elixir
 # lib/my_app_web/email_html.ex
@@ -77,6 +77,7 @@ defmodule MyAppWeb.EmailHTML do
   # embed_templates "email_html/*"
   
   # Option 3: Use Phoenix.Component with ~H sigil (returns safe tuples)
+  # Note: Requires phoenix_live_view as a dependency
   # use Phoenix.Component
   # def welcome("html", assigns) do
   #   ~H"""
@@ -121,64 +122,53 @@ end
 
 ### Using Layouts
 
-Layouts wrap your email content with consistent headers/footers:
+Layouts wrap your email content with consistent headers/footers. 
+
+**Important:** The `inner_content` is passed as a safe tuple `{:safe, html_string}` to prevent double-escaping in embedded templates. Layouts should handle this appropriately:
 
 ```elixir
 # lib/my_app_web/layout_html.ex
 defmodule MyAppWeb.LayoutHTML do
+  # Option 1: Return a safe tuple with inner_content included (recommended for embedded templates)
   def email("html", assigns) do
-    """
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            line-height: 1.6;
-            color: #333;
-          }
-          .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            padding: 20px;
-          }
-          .header { 
-            background: #f8f9fa; 
-            padding: 20px; 
-            text-align: center;
-          }
-          .footer { 
-            margin-top: 40px; 
-            padding-top: 20px; 
-            border-top: 1px solid #dee2e6;
-            text-align: center;
-            font-size: 12px;
-            color: #6c757d;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>My App</h1>
-          </div>
-          <div class="content">
-            #{assigns.inner_content}
-          </div>
-          <div class="footer">
-            <p>&copy; 2024 My Company. All rights reserved.</p>
-            <p>
-              <a href="https://example.com/unsubscribe">Unsubscribe</a> |
-              <a href="https://example.com/preferences">Email Preferences</a>
-            </p>
-          </div>
-        </div>
-      </body>
-    </html>
-    """
+    {:safe,
+      [
+        """
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              body { font-family: sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>My App</h1>
+              </div>
+              <div class="content">
+        """,
+        assigns.inner_content,  # Safe tuple prevents double-escaping
+        """
+              </div>
+              <div class="footer">
+                <p>&copy; 2024 My Company. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+      ]
+    }
   end
+  
+  # Option 2: Use embed_templates with Phoenix.HTML.raw
+  # When using embed_templates with <%= @inner_content %>, use:
+  # <%= Phoenix.HTML.raw(@inner_content) %>
+  # to prevent double-escaping
   
   def email("text", assigns) do
     """
