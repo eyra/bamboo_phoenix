@@ -113,7 +113,7 @@ defmodule Bamboo.PhoenixTest do
   end
 
   defmodule Email do
-    use Bamboo.Phoenix, view: EmailHTML
+    use Bamboo.Phoenix, template: EmailHTML
 
     def text_and_html_email_with_layout do
       new_email()

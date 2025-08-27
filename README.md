@@ -36,7 +36,7 @@ Define your email module with template functions:
 ```elixir
 # lib/my_app_web/emails/user_email.ex
 defmodule MyApp.UserEmail do
-  use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+  use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
   
   def welcome_email(user) do
     new_email()
@@ -184,7 +184,7 @@ end
 
 ```elixir
 defmodule MyApp.UserEmail do
-  use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+  use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
   
   def welcome_email(user) do
     base_email()

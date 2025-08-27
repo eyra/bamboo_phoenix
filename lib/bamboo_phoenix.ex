@@ -39,7 +39,7 @@ defmodule Bamboo.Phoenix do
   _Set the text and HTML layout for an email:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def welcome_email do
           new_email()
@@ -52,7 +52,7 @@ defmodule Bamboo.Phoenix do
   _Set both the text and HTML layout at the same time:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def welcome_email do
           new_email()
@@ -64,7 +64,7 @@ defmodule Bamboo.Phoenix do
   _Render both text and html emails without layouts:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def welcome_email do
           new_email()
@@ -75,7 +75,7 @@ defmodule Bamboo.Phoenix do
   _Make assigns available to a template:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def welcome_email(user) do
           new_email()
@@ -87,7 +87,7 @@ defmodule Bamboo.Phoenix do
   _Make assigns available to a template during render call:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def welcome_email(user) do
           new_email()
@@ -99,7 +99,7 @@ defmodule Bamboo.Phoenix do
   _Render an email by passing the template string to render:_
 
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def html_email do
           new_email
@@ -116,7 +116,7 @@ defmodule Bamboo.Phoenix do
 
       # my_app_web/email.ex
       defmodule MyApp.Email do
-        use Bamboo.Phoenix, view: MyAppWeb.EmailHTML
+        use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
 
         def sign_in_email(person) do
           base_email()
@@ -196,7 +196,7 @@ defmodule Bamboo.Phoenix do
 
   import Bamboo.Email, only: [put_private: 3]
 
-  defmacro __using__(view: view_module) do
+  defmacro __using__(template: template_module) do
     verify_phoenix_dep()
 
     quote do
@@ -211,16 +211,16 @@ defmodule Bamboo.Phoenix do
       "welcome_email.text" or "welcome_email.html". Scroll to the top for more examples.
       """
       def render(email, template, assigns \\ []) do
-        Bamboo.Phoenix.render_email(unquote(view_module), email, template, assigns)
+        Bamboo.Phoenix.render_email(unquote(template_module), email, template, assigns)
       end
     end
   end
 
   defmacro __using__(opts) do
     raise ArgumentError, """
-    expected Bamboo.Phoenix to have a view set, instead got: #{inspect(opts)}.
+    expected Bamboo.Phoenix to have a template module set, instead got: #{inspect(opts)}.
 
-    Please set a view e.g. use Bamboo.Phoenix, view: MyAppWeb.MyView
+    Please set a template module e.g. use Bamboo.Phoenix, template: MyAppWeb.EmailHTML
     """
   end
 
@@ -300,11 +300,11 @@ defmodule Bamboo.Phoenix do
   end
 
   @doc false
-  def render_email(view, email, template, assigns) do
+  def render_email(template_module, email, template, assigns) do
     email
     |> put_default_layouts
     |> merge_assigns(assigns)
-    |> put_view(view)
+    |> put_template_module(template_module)
     |> put_template(template)
     |> render
   end
@@ -323,8 +323,8 @@ defmodule Bamboo.Phoenix do
     email |> Map.put(:assigns, assigns)
   end
 
-  defp put_view(email, view_module) do
-    email |> put_private(:view_module, view_module)
+  defp put_template_module(email, template_module) do
+    email |> put_private(:template_module, template_module)
   end
 
   defp put_template(email, view_template) do
@@ -371,7 +371,7 @@ defmodule Bamboo.Phoenix do
 
   defp render_html(email, template) do
     assigns = email.assigns
-    view_module = email.private.view_module
+    template_module = email.private.template_module
     
     # Get the template name without extension
     template_name = template
@@ -380,11 +380,11 @@ defmodule Bamboo.Phoenix do
                    |> String.to_atom()
     
     # Render the template
-    content = if function_exported?(view_module, template_name, 2) do
-      apply(view_module, template_name, ["html", assigns])
+    content = if function_exported?(template_module, template_name, 2) do
+      apply(template_module, template_name, ["html", assigns])
     else
       raise ArgumentError, 
-        "undefined template #{inspect(template_name)} for module #{inspect(view_module)}"
+        "undefined template #{inspect(template_name)} for module #{inspect(template_module)}"
     end
     
     # Apply layout if present
@@ -400,7 +400,7 @@ defmodule Bamboo.Phoenix do
 
   defp render_text(email, template) do
     assigns = email.assigns
-    view_module = email.private.view_module
+    template_module = email.private.template_module
     
     # Get the template name without extension
     template_name = template
@@ -409,11 +409,11 @@ defmodule Bamboo.Phoenix do
                    |> String.to_atom()
     
     # Render the template  
-    content = if function_exported?(view_module, template_name, 2) do
-      apply(view_module, template_name, ["text", assigns])
+    content = if function_exported?(template_module, template_name, 2) do
+      apply(template_module, template_name, ["text", assigns])
     else
       raise ArgumentError, 
-        "undefined template #{inspect(template_name)} for module #{inspect(view_module)}"
+        "undefined template #{inspect(template_name)} for module #{inspect(template_module)}"
     end
     
     # Apply layout if present
