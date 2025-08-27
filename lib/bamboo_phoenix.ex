@@ -493,22 +493,25 @@ defmodule Bamboo.Phoenix do
     binary
   end
 
-  # Handle Phoenix.LiveView.Rendered structs from ~H sigil
-  defp normalize_template_result(%Phoenix.LiveView.Rendered{} = rendered) do
-    rendered
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-  end
-
   defp normalize_template_result(other) do
-    raise ArgumentError, """
-    Expected template to return a string, {:safe, iodata} tuple, or Phoenix.LiveView.Rendered struct, got: #{inspect(other)}
-    
-    Templates should return either:
-    - A plain string: "<div>content</div>"
-    - A Phoenix.HTML safe tuple: {:safe, ["<div>", "content", "</div>"]}
-    - A Phoenix.LiveView.Rendered struct from ~H sigil
-    """
+    # Only handle known safe types, not arbitrary tuples that might implement Phoenix.HTML.Safe
+    cond do
+      # Handle structs that implement Phoenix.HTML.Safe (like Phoenix.LiveView.Rendered)
+      is_struct(other) && Phoenix.HTML.Safe.impl_for(other) ->
+        other
+        |> Phoenix.HTML.Safe.to_iodata()
+        |> IO.iodata_to_binary()
+      
+      true ->
+        raise ArgumentError, """
+        Expected template to return a string, {:safe, iodata} tuple, or struct implementing Phoenix.HTML.Safe, got: #{inspect(other)}
+        
+        Templates should return either:
+        - A plain string: "<div>content</div>"
+        - A Phoenix.HTML safe tuple: {:safe, ["<div>", "content", "</div>"]}
+        - A struct implementing Phoenix.HTML.Safe (like Phoenix.LiveView.Rendered from ~H sigil)
+        """
+    end
   end
 
   # Flatten nested safe tuples in iodata
