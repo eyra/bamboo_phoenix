@@ -51,12 +51,16 @@ end
 
 ### Template Modules
 
-With Phoenix 1.8+, templates are defined as functions in modules:
+With Phoenix 1.8+, templates are defined as functions in modules. These functions can return either:
+- Plain strings: `"<div>content</div>"`
+- Phoenix.HTML safe tuples: `{:safe, iodata}` (from `embed_templates` or `~H` sigil)
+
+Both return types are handled automatically by bamboo_phoenix.
 
 ```elixir
 # lib/my_app_web/email_html.ex
 defmodule MyAppWeb.EmailHTML do
-  # Define both HTML and text versions of your templates
+  # Option 1: Return plain strings
   def welcome("html", assigns) do
     """
     <div style="font-family: sans-serif;">
@@ -68,6 +72,19 @@ defmodule MyAppWeb.EmailHTML do
     </div>
     """
   end
+  
+  # Option 2: Use embed_templates (returns safe tuples)
+  # embed_templates "email_html/*"
+  
+  # Option 3: Use Phoenix.Component with ~H sigil (returns safe tuples)
+  # use Phoenix.Component
+  # def welcome("html", assigns) do
+  #   ~H"""
+  #   <div>
+  #     <h1>Welcome <%= @user.name %>!</h1>
+  #   </div>
+  #   """
+  # end
   
   def welcome("text", assigns) do
     """

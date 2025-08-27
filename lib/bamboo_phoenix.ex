@@ -381,7 +381,8 @@ defmodule Bamboo.Phoenix do
     
     # Render the template
     content = if function_exported?(template_module, template_name, 2) do
-      apply(template_module, template_name, ["html", assigns])
+      result = apply(template_module, template_name, ["html", assigns])
+      normalize_template_result(result)
     else
       raise ArgumentError, 
         "undefined template #{inspect(template_name)} for module #{inspect(template_module)}"
@@ -394,7 +395,8 @@ defmodule Bamboo.Phoenix do
       {layout_module, layout_template} ->
         layout_assigns = Map.put(assigns, :inner_content, content)
         layout_fn = if is_atom(layout_template), do: layout_template, else: String.to_atom(layout_template)
-        apply(layout_module, layout_fn, ["html", layout_assigns])
+        result = apply(layout_module, layout_fn, ["html", layout_assigns])
+        normalize_template_result(result)
     end
   end
 
@@ -410,7 +412,8 @@ defmodule Bamboo.Phoenix do
     
     # Render the template  
     content = if function_exported?(template_module, template_name, 2) do
-      apply(template_module, template_name, ["text", assigns])
+      result = apply(template_module, template_name, ["text", assigns])
+      normalize_template_result(result)
     else
       raise ArgumentError, 
         "undefined template #{inspect(template_name)} for module #{inspect(template_module)}"
@@ -423,7 +426,27 @@ defmodule Bamboo.Phoenix do
       {layout_module, layout_template} ->
         layout_assigns = Map.put(assigns, :inner_content, content)
         layout_fn = if is_atom(layout_template), do: layout_template, else: String.to_atom(layout_template)
-        apply(layout_module, layout_fn, ["text", layout_assigns])
+        result = apply(layout_module, layout_fn, ["text", layout_assigns])
+        normalize_template_result(result)
     end
+  end
+
+  # Convert Phoenix.HTML safe tuples to strings, pass through regular strings
+  defp normalize_template_result({:safe, iodata}) do
+    IO.iodata_to_binary(iodata)
+  end
+
+  defp normalize_template_result(binary) when is_binary(binary) do
+    binary
+  end
+
+  defp normalize_template_result(other) do
+    raise ArgumentError, """
+    Expected template to return a string or {:safe, iodata} tuple, got: #{inspect(other)}
+    
+    Templates should return either:
+    - A plain string: "<div>content</div>"
+    - A Phoenix.HTML safe tuple: {:safe, ["<div>", "content", "</div>"]}
+    """
   end
 end

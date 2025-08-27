@@ -229,4 +229,66 @@ defmodule Bamboo.PhoenixTest do
       Bamboo.Phoenix.render(:foo, :foo, :foo)
     end
   end
+
+  describe "safe tuple handling" do
+    defmodule SafeTupleLayoutHTML do
+      # Simulates Phoenix.HTML safe tuples from embed_templates
+      def app("html", assigns) do
+        {:safe, ["<html><body>", assigns.inner_content, "</body></html>"]}
+      end
+
+      def app("text", assigns) do
+        # Text templates usually return strings, but test both
+        "Header\n#{assigns.inner_content}\nFooter"
+      end
+    end
+
+    defmodule SafeTupleEmailHTML do
+      # Simulates templates that return safe tuples
+      def welcome("html", assigns) do
+        {:safe, ["<h1>Hello ", assigns.name, "</h1>"]}
+      end
+
+      def welcome("text", assigns) do
+        "Hello #{assigns.name}"
+      end
+
+      # Mixed return types
+      def mixed("html", _assigns) do
+        {:safe, ["<div>Safe tuple content</div>"]}
+      end
+
+      def mixed("text", _assigns) do
+        "Plain string content"
+      end
+    end
+
+    defmodule SafeTupleEmail do
+      use Bamboo.Phoenix, template: SafeTupleEmailHTML
+
+      def welcome_with_safe_layout(name) do
+        new_email()
+        |> put_layout({SafeTupleLayoutHTML, :app})
+        |> assign(:name, name)
+        |> render(:welcome)
+      end
+
+      def mixed_return_types do
+        new_email()
+        |> render(:mixed)
+      end
+    end
+
+    test "handles safe tuples from templates" do
+      email = SafeTupleEmail.mixed_return_types()
+      assert email.html_body == "<div>Safe tuple content</div>"
+      assert email.text_body == "Plain string content"
+    end
+
+    test "handles safe tuples with layouts" do
+      email = SafeTupleEmail.welcome_with_safe_layout("Alice")
+      assert email.html_body == "<html><body><h1>Hello Alice</h1></body></html>"
+      assert email.text_body == "Header\nHello Alice\nFooter"
+    end
+  end
 end
