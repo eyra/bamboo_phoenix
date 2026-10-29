@@ -427,7 +427,8 @@ defmodule Bamboo.Phoenix do
                    |> String.to_atom()
     
     # Render the template
-    content = if function_exported?(template_module, template_name, 2) do
+    content = if Code.ensure_loaded?(template_module) and
+                 function_exported?(template_module, template_name, 2) do
       result = apply(template_module, template_name, ["html", assigns])
       normalize_template_result(result)
     else
@@ -461,7 +462,8 @@ defmodule Bamboo.Phoenix do
                    |> String.to_atom()
     
     # Render the template  
-    content = if function_exported?(template_module, template_name, 2) do
+    content = if Code.ensure_loaded?(template_module) and
+                 function_exported?(template_module, template_name, 2) do
       result = apply(template_module, template_name, ["text", assigns])
       normalize_template_result(result)
     else
