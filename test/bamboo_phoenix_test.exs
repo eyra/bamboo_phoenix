@@ -473,6 +473,53 @@ defmodule Bamboo.PhoenixTest do
     end
   end
 
+  describe "template module that is not loaded yet" do
+    # In interactive mode (dev, test) a module is only loaded on first use, and
+    # function_exported?/3 does not load it.
+    setup do
+      dir = Path.join(System.tmp_dir!(), "bamboo_phoenix_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(dir)
+
+      [{module, binary}] =
+        Code.compile_string("""
+        defmodule Bamboo.PhoenixTest.NotLoadedEmailHTML do
+          def welcome("html", _assigns), do: "<p>Welcome!</p>"
+          def welcome("text", _assigns), do: "Welcome!"
+        end
+        """)
+
+      File.write!(Path.join(dir, "#{module}.beam"), binary)
+      unload(module)
+      Code.prepend_path(dir)
+
+      on_exit(fn ->
+        unload(module)
+        Code.delete_path(dir)
+        File.rm_rf!(dir)
+      end)
+
+      refute :code.is_loaded(module)
+      %{module: module}
+    end
+
+    test "renders the html template", %{module: module} do
+      email = Bamboo.Phoenix.render_email(module, Bamboo.Email.new_email(), "welcome.html", [])
+
+      assert email.html_body =~ "<p>Welcome!</p>"
+    end
+
+    test "renders the text template", %{module: module} do
+      email = Bamboo.Phoenix.render_email(module, Bamboo.Email.new_email(), "welcome.text", [])
+
+      assert email.text_body =~ "Welcome!"
+    end
+
+    defp unload(module) do
+      :code.purge(module)
+      :code.delete(module)
+    end
+  end
+
   describe "Phoenix.Component ~H sigil support (simulated)" do
     defmodule SimulatedHeexEmailHTML do
       # Simulate what ~H sigil returns - safe tuples with iodata
